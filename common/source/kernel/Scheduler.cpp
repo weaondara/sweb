@@ -14,6 +14,8 @@
 #include "ustring.h"
 #include "Lock.h"
 
+#include "NewMutexTestThread.h"
+
 ArchThreadRegisters *currentThreadRegisters;
 Thread *currentThread;
 
@@ -32,6 +34,9 @@ Scheduler::Scheduler()
   ticks_ = 0;
   addNewThread(&cleanup_thread_);
   addNewThread(&idle_thread_);
+  addNewThread(new NewMutexTestThread());
+  addNewThread(new NewMutexTestThread());
+  addNewThread(new NewMutexTestThread());
 }
 
 uint32 Scheduler::schedule()
@@ -51,7 +56,7 @@ uint32 Scheduler::schedule()
 
     if ((currentThread == previousThread) && (currentThread->state_ != Running))
     {
-      debug(SCHEDULER, "Scheduler::schedule: ERROR: currentThread == previousThread! Either no thread is in state Running or you added the same thread more than once.\n");
+      debug(SCHEDULER, "Scheduler::schedule: ERROR: currentThread == previousThread! Either no thread is in state Running or you added the same thread more than once.");
     }
   } while (!currentThread->schedulable());
 //  debug ( SCHEDULER,"Scheduler::schedule: new currentThread is %p %s, switch_userspace:%d\n",currentThread,currentThread ? currentThread->getName() : 0,currentThread ? currentThread->switch_to_userspace_ : 0);

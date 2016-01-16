@@ -51,7 +51,21 @@ void Condition::wait(bool re_acquire_mutex, pointer called_by)
   last_accessed_at_ = called_by;
   // The mutex can be released here, because for waking up another thread, the list lock is needed, which is still held by the thread.
   mutex_->release(called_by);
-  Scheduler::instance()->sleepAndRelease(*(Lock*)this);
+  
+  
+    //new ----------------------------------
+//    debug(SYSCALL, "%p going to sleep on %p\n", currentThread, this);
+    currentThread->lock_waiting_on_ = this;
+    pushFrontCurrentThreadToWaitersList();
+    unlockWaitersList();
+//    Scheduler::instance()->yield(); //testing
+//    ArchThreads::testSetLock((uint32&)currentThread->state_, (uint32)Sleeping);
+    currentThread->state_ = Sleeping;
+    Scheduler::instance()->yield();
+    //new ----------------------------------
+    
+  
+  //Scheduler::instance()->sleepAndRelease(*(Lock*)this);
   if(re_acquire_mutex)
   {
     assert(mutex_);
@@ -86,8 +100,14 @@ void Condition::signal(pointer called_by)
 
       //debug(LOCK, "Condition: Thread %s (%p) being signaled for condition %s (%p).\n",
       //      thread_to_be_woken_up->getName(), thread_to_be_woken_up, getName(), this);
+      //new ------------------------------------------
+      //      thread_to_be_woken_up->lock_waiting_on_ = 0;
+      //      Scheduler::instance()->wake(thread_to_be_woken_up);
+      while (thread_to_be_woken_up->state_ != Sleeping)
+        Scheduler::instance()->yield();
       thread_to_be_woken_up->lock_waiting_on_ = 0;
-      Scheduler::instance()->wake(thread_to_be_woken_up);
+      thread_to_be_woken_up->state_ = Running;
+      //new ------------------------------------------
     }
     else
     {

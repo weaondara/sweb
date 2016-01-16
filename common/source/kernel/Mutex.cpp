@@ -72,7 +72,18 @@ void Mutex::acquire(pointer called_by)
     }
     // check for deadlocks, interrupts...
     doChecksBeforeWaiting();
-    Scheduler::instance()->sleepAndRelease(*(Lock*)this);
+    
+    //new ----------------------------------
+//    debug(SYSCALL, "%p going to sleep on %p\n", currentThread, this);
+    currentThread->lock_waiting_on_ = this;
+    pushFrontCurrentThreadToWaitersList();
+    unlockWaitersList();
+//    Scheduler::instance()->yield(); //testing
+//    ArchThreads::testSetLock((uint32&)currentThread->state_, (uint32)Sleeping);
+    currentThread->state_ = Sleeping;
+    Scheduler::instance()->yield();
+    //new ----------------------------------
+    
     // We have been waken up again.
     currentThread->lock_waiting_on_ = 0;
   }
@@ -110,7 +121,11 @@ void Mutex::release(pointer called_by)
   unlockWaitersList();
   if(thread_to_be_woken_up)
   {
-    Scheduler::instance()->wake(thread_to_be_woken_up);
+    //new ------------------------------------------
+    while(thread_to_be_woken_up->state_ != Sleeping) 
+      Scheduler::instance()->yield();
+    thread_to_be_woken_up->state_ = Running;
+    //new ------------------------------------------
   }
 }
 
